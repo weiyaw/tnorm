@@ -18,11 +18,11 @@
 rmvtnorm <- function(n, mean = c(0, 0), cov = diag(2), initial = c(0, 0),
                      F = NULL, g = NULL, burn = 10L) {
     if (is.null(F) || is.null(g)) {
-        F <- matrix(0L, nrow = 1, ncol = length(mean))
-        g <- rep(Inf, times = length(mean))
+        F <- matrix(1L, nrow = 1, ncol = length(mean))
+        g <- Inf
     }
 
-    if (all(F %*% initial + g < 0)) {
+    if (any(F %*% initial + g < 0)) {
         stop("Initial value violates constraints.")
     }
     .Call('_tnorm_rmvtnorm', PACKAGE = 'tnorm', n, mean, cov, initial, F, g, burn)

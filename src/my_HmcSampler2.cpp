@@ -14,13 +14,19 @@
 #include "my_HmcSampler2.h"
 
 using namespace std;
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
 // using namespace magnet::math;
 
 
+// const double EPS = 0.000000001;
+// const double HmcSampler::min_t = 0.000000001;
 const double EPS = 0.00000001;
 const double HmcSampler::min_t = 0.0000000000001;
 
-HmcSampler::HmcSampler(const int& d) : dim(d) {}   
+
+HmcSampler::HmcSampler(const int& d, const MatrixXd& F, const VectorXd& g)
+  : dim(d), F_mat(F), g_vec(g) {}
 
 void HmcSampler::setInitialValue(const VectorXd & initial_value){
   // double check =_verifyConstraints( initial_value );
@@ -32,91 +38,106 @@ void HmcSampler::setInitialValue(const VectorXd & initial_value){
 }
 
 MatrixXd HmcSampler::sampleNext(bool returnTrace ) {  
-
+  COUNTER++;
   MatrixXd tracePoints = MatrixXd(dim,0);   //this matrix will only be filled if(returnTrace)
 
   double T = M_PI/2;		// sample how much time T to move
   VectorXd b = lastSample;
+  if (!_verifyConstraints(b)) {
+    Rcpp::Rcout << "LAST SAMPLE VIOLATES CONSTRAINTS "
+		<< (F_mat * lastSample + g_vec).transpose()
+		<< std::endl;
+  }
+
   VectorXd a = VectorXd(dim);   // initial velocity 
-  int check_interrupt2 = 1;
+  int check_interrupt2 = 0;
+  TRIGGER = false;
 
   while(2){
     if (check_interrupt2++ % 50 == 0) {
       Rcpp::checkUserInterrupt();
+    }
+    if (check_interrupt2 > 1) {
+      Rcpp::Rcout << check_interrupt2 << " long outer loop." << std::endl;
+      TRIGGER = false;
+    }	
+
+    if (check_interrupt2 == 5) {
+      Rcpp::Rcout << COUNTER << std::endl;
+      Rcpp::stop("too many loops.");
     }
 
     double velsign = 0;
 
     // Sample new initial velocity from normal distributions
     for (int i = 0; i < dim; i++) { 
-      // a(i)=  nd(eng1);
       a(i) = R::norm_rand();
     }
 
-    double tt = T;   // tt is the time left to move 
+    double tt = T;		// tt is the time left to move 
     double t1;
-    double t2;
-    int cn1, cn2; //constraint number
+    double t2; 			// only relevant to quadratic constraint.
+    int cn1, cn2;		// constraint number
 
+    if (TRIGGER) {
+      Rcpp::Rcout << "init vel:" << a.transpose() << std::endl;
+      Rcpp::Rcout << "prev sam:" << b.transpose() << std::endl;
+    }
 
     bool first_bounce = true;    // for the first move, we do not fear that a small t1 or t2 is due to being in the boundary from the previous bounce.
-    int check_interrupt1 = 1;
-    while (1){            
-      
+    int check_interrupt1 = 0;
+
+    while (1){
       if (check_interrupt1++ % 50 == 0) {
 	Rcpp::checkUserInterrupt();
+      }
+      if (check_interrupt1 % 100 == 0) {
+	TRIGGER = false;
+	Rcpp::Rcout << check_interrupt1 << " long inner loop." << std::endl;
       }
 
       t1 = 0; 
       if (!linearConstraints.empty()) {
 	_getNextLinearHitTime(a, b, t1, cn1);
       }
-      
-      t2 = 0;
-      // if (!quadraticConstraints.empty()) {
-      // 	_getNextQuadraticHitTime(a,b,t2,cn2, first_bounce);                        
-      // 	first_bounce = false;
-      // }
+      if (TRIGGER) {Rcpp::Rcout << "Hit time: " << t1 << std::endl;}
 
       double t = t1;		// how much time to move. if t==0, move tt 
       bool linear_hit = true;
-      if (t2 > 0 && (t1 == 0 || t2 < t1)) {
-	t = t2;
-	linear_hit = false;
-      }
 
-      if (t == 0 || tt < t) { // if no wall to be hit (t==0) or not enough time left to hit the wall (tt<t2) 
+      // if no wall to be hit (t==0) or not enough time left to hit the wall (tt<t2) 
+      if (t == 0 || tt < t) {
+      // if (tt < t) {
 	break;
-      }
-      else {            
-	if (returnTrace) {
-	  _updateTrace(a,b,t,tracePoints);
-	}
-
+      } else {            
 	tt = tt - t;
 	VectorXd new_b   = sin(t) * a + cos(t) * b;   // hit location 
 	VectorXd hit_vel = cos(t) * a - sin(t) * b;   // hit velocity
-	b = new_b;            
-           
+	b = new_b;
+	if (TRIGGER) {
+	Rcpp::Rcout << "New b : "
+		    << (F_mat * new_b + g_vec).transpose() << std::endl;}
+
+       	if (!_verifyConstraints(new_b)) {
+	  Rcpp::Rcout << "NEW B VIOLATES" << std::endl;
+	  Rcpp::Rcout << "t1: " << t1 << std::endl;
+	  Rcpp::Rcout << "old b: "
+		      << (F_mat * lastSample + g_vec).transpose() << std::endl;
+	  Rcpp::Rcout << "test b : "
+		      << (F_mat * (sin(t*0.1) * a + cos(t*0.1) * lastSample) + g_vec).transpose()
+		      << std::endl;
+	}
 
 	// reflect the velocity and verify that it points in the right direction
-    
-	if (!linear_hit){
-	  QuadraticConstraint qc = quadraticConstraints[cn2];
-	  VectorXd nabla = 2* ((qc.A)*b) + qc.B;            
-	  double alpha = (nabla.dot(hit_vel))/(nabla.dot(nabla));
-	  a = hit_vel - 2*alpha*nabla;                  // reflected velocity    
-	  velsign = a.dot(nabla);
-	}
-	else {                
-	  LinearConstraint ql = linearConstraints[cn1];
-	  double f2 = ((ql.f).dot((ql.f)));
-	  double alpha = ((ql.f).dot(hit_vel))/f2;
-	  a = hit_vel - 2 * alpha * (ql.f);                  // reflected velocity                                         
-	  velsign = a.dot((ql.f));
-	}
+	LinearConstraint ql = linearConstraints[cn1];
+	double f2 = ((ql.f).dot((ql.f)));
+	double alpha = ((ql.f).dot(hit_vel))/f2;
+	a = hit_vel - 2 * alpha * (ql.f); // reflected velocity
+	velsign = a.dot((ql.f));
+
+	// This occurs rarely, due to numerical instabilities
 	if (velsign < 0) {
-	  // This occurs rarely, due to numerical instabilities
+	  Rcpp::Rcout << velsign << " inner velsign less than 0." << std::endl;
 	  break; // get out of while(1). Resample the velocity and start again.
 	}
       }
@@ -124,6 +145,7 @@ MatrixXd HmcSampler::sampleNext(bool returnTrace ) {
 
 
     if (velsign < 0) {		
+      Rcpp::Rcout << velsign << " outer velsign less than 0." << std::endl;
       continue;		 // if velocity is negetive, go to beginning of while(2)
     }
 
@@ -131,15 +153,15 @@ MatrixXd HmcSampler::sampleNext(bool returnTrace ) {
     VectorXd bb =  sin(tt) * a + cos(tt) * b;
 
     // verify that we don't violate the constraints due to a numerical instability
-    if (_verifyConstraints(bb)) {
-      lastSample = bb;      
-      if (returnTrace) {
-	_updateTrace(a,b,tt,tracePoints);
-	return tracePoints.transpose();          
 
-      } else return lastSample.transpose();
+    if (TRIGGER) {Rcpp::Rcout << " bbbb : " << (F_mat * bb + g_vec).transpose() << std::endl;}
+    if (_verifyConstraints(bb)) {
+      // if (!(_verifyConstraints(bb) < 0)) {
+      lastSample = bb;      
+      return lastSample;
     }
-    // at this point we have check < 0, so we violated constraints: resample. 
+    Rcpp::Rcout << "BAD BB CONSTRAINTS" << std::endl;
+    // at this point we have violated constraints: resample. 
 
   } // while(2)
 }
@@ -161,48 +183,63 @@ void HmcSampler::addQuadraticConstraint(const MatrixXd & A, const VectorXd & B, 
     
 }
 
-void HmcSampler::_getNextLinearHitTime(const VectorXd & a, const VectorXd & b, double & hit_time, int & cn ){
-  hit_time=0;
+void HmcSampler::_getNextLinearHitTime(const VectorXd& a, const VectorXd& b,
+				       double& hit_time, int& cn ){
+  hit_time = 0;
     
   for (int i=0; i != linearConstraints.size(); i++ ){
     LinearConstraint lc = linearConstraints[i];
     double fa = (lc.f).dot(a);
     double fb = (lc.f).dot(b);
     double u = sqrt(fa*fa + fb*fb);
-    if (u>lc.g && u>-lc.g){
-      double phi = atan2(-fa,fb);      //     -pi < phi < pi
-      double t1 = acos(-lc.g/u)-phi;  //     -pi < t1 < 2*pi
-                
-                
-      if (t1 < 0){		//  0 < t1 < 2*pi
+    if (u > lc.g && u > -lc.g){
+      double phi = atan2(-fa,fb); // -PI < phi < PI
+
+
+      // solve eqn 2.23 for t, first case
+      // -PI < t1 + phi < PI
+      double t1 = acos(-lc.g/u) - phi; // -PI < t1 < 2PI
+
+      // solve eqn 2.23 for t, second case,
+      // since cos(t1 + phi) == cos(-(t2 + phi))
+      double t2 = -t1 - 2*phi;	//  -2PI < t2 < PI
+
+      if (t1 < 0){		//  0 < t1 < 2PI
 	t1 += 2*M_PI;
       }
+
+      // if t1 is close to 0 or 2pi
+      if (abs(t1) < EPS || abs(t1 - 2*M_PI) < EPS) {
+	t1 = 0;			//  0 <= t1 < 2PI
+      }
       
-      if (abs(t1) < min_t) {	// if t1 is close to 0
-	t1 = 0;
-      } else if (abs(t1-2*M_PI) < min_t ) { // if t1 is close to 2pi
-	t1 = 0;
-      }          
-                
-      double t2 = -t1-2*phi;             //  -4*pi < t2 < 3*pi
-      if (t2<0) t2 += 2*M_PI;                 //-2*pi < t2 < 2*pi
-      if (t2<0) t2 += 2*M_PI;                 //0 < t2 < 2*pi
-                
-      if (abs(t2) < min_t ) t2=0;    
-      else if (abs(t2-2*M_PI) < min_t ) t2=0;                            
-                
-                
-      double t=t1;                
-      if (t1==0) t = t2;
-      else if (t2==0) t = t1;
-      else t=(t1<t2?t1:t2);
-                
-      if  (t > min_t && (hit_time == 0 || t < hit_time)){
-	hit_time=t;
-	cn =i;                    
-      }            
+      if (t2 < 0) {
+	t2 += 2*M_PI;		// 0 < t2 < 2PI
+      }
+
+      if (abs(t2) < EPS || abs(t2 - 2*M_PI) < EPS) {
+	t2 = 0;			// 0 <= t2 < 2PI
+      }       
+      
+      double t = t1;
+
+      if (t1 == 0) {
+      	t = t2;
+      } else if (t2 == 0) {
+      	t = t1;
+      } else {
+	t = (t1 < t2? t1 : t2);
+      }
+      if (TRIGGER) {
+      	Rcpp::Rcout << i << " time " << t1 << " " << t2 << " " << t << " " << hit_time << std::endl;
+      }
+      if (t > min_t && (hit_time == 0 || t < hit_time)) {
+	hit_time = t;
+	cn = i;
+	if (TRIGGER) { Rcpp::Rcout << "CHANGE CONSTRAINT TO " << i << std::endl; }
+      }
     }       
-  }        
+  }
 }
 
 void HmcSampler::_getNextQuadraticHitTime(const VectorXd & a, const VectorXd & b, double & hit_time, int & cn , const bool first_bounce ){
@@ -287,13 +324,17 @@ bool HmcSampler::_verifyConstraints(const VectorXd& b){
   //   }
   // }
 
+  double constraints_lhs = 1;
   for (int i = 0; i < linearConstraints.size(); i++) { 
     LinearConstraint lc = linearConstraints[i];
-    double check = (lc.f).dot(b) + lc.g;
-    if (check < EPS) {
+    constraints_lhs = (lc.f).dot(b) + lc.g;
+    // if (TRIGGER) { Rcpp::Rcout << constraints_lhs << " "; }
+    if (!(constraints_lhs > -EPS)) {
+      // if (TRIGGER) { Rcpp::Rcout << std::endl; }
       return false;
     }
   }    
+  // if (TRIGGER) { Rcpp::Rcout << std::endl; }
   return true;
 }
 

@@ -30,7 +30,7 @@ struct QuadraticConstraint{
 class HmcSampler   {
 public:
     
-    HmcSampler(const int & d);
+  HmcSampler(const int& d, const MatrixXd& F, const VectorXd& g);
 
     void setInitialValue(const VectorXd & initial);
     void addLinearConstraint(const VectorXd & f, const double & g);
@@ -38,6 +38,11 @@ public:
     MatrixXd sampleNext(bool returnTrace = false);
     
 private:
+    int COUNTER = 0;
+    bool TRIGGER;
+    MatrixXd F_mat;
+    VectorXd g_vec;
+    
     int dim;
     VectorXd lastSample;    
     static const double min_t; 

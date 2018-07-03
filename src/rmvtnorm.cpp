@@ -26,8 +26,6 @@ Eigen::MatrixXd rmvtnorm(const int n,
   // number of dimensions
   const int dim = mean.size();
 
-  HmcSampler hmc1(dim);
-
   // number of linear constraints
   const int numlin = F.rows();
 
@@ -37,6 +35,9 @@ Eigen::MatrixXd rmvtnorm(const int n,
   // get constraints corresponding to standard normal
   MatrixXd f2 {F * L};
   MatrixXd g2 {(F * mean) + g};
+
+  // initialise hmc sampler
+  HmcSampler hmc1(dim, f2, g2);
 
   if (numlin >0){
     for(int i = 0; i < numlin; i++) {
@@ -56,7 +57,10 @@ Eigen::MatrixXd rmvtnorm(const int n,
 
   // generate samples and transform them back with appropriate mean and covariance
   for (int i = 0; i < n; i++) {
-    MatrixXd temp = (L * hmc1.sampleNext().transpose() + mean);
+    // if (i % 10000 == 0) {
+    //   Rcpp::Rcout << i << " samples." << std::endl;
+    // }
+    MatrixXd temp = (L * hmc1.sampleNext() + mean);
     res.row(i) = temp.transpose();
   }
 
