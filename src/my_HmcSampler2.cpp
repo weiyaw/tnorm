@@ -39,6 +39,7 @@ void HmcSampler::setInitialValue(const VectorXd & initial_value){
 
 MatrixXd HmcSampler::sampleNext(bool returnTrace ) {  
   COUNTER++;
+  bool bad_new_b = false;
   MatrixXd tracePoints = MatrixXd(dim,0);   //this matrix will only be filled if(returnTrace)
 
   double T = M_PI/2;		// sample how much time T to move
@@ -52,14 +53,15 @@ MatrixXd HmcSampler::sampleNext(bool returnTrace ) {
   VectorXd a = VectorXd(dim);   // initial velocity 
   int check_interrupt2 = 0;
   TRIGGER = false;
-
+  if (COUNTER == 44967) {TRIGGER = true;}
+  
   while(2){
     if (check_interrupt2++ % 50 == 0) {
       Rcpp::checkUserInterrupt();
     }
     if (check_interrupt2 > 1) {
       Rcpp::Rcout << check_interrupt2 << " long outer loop." << std::endl;
-      TRIGGER = false;
+      TRIGGER = true;
     }	
 
     if (check_interrupt2 == 5) {
@@ -88,13 +90,15 @@ MatrixXd HmcSampler::sampleNext(bool returnTrace ) {
     int check_interrupt1 = 0;
 
     while (1){
+      // advance the particle for tt = PI/2 
+
       if (check_interrupt1++ % 50 == 0) {
 	Rcpp::checkUserInterrupt();
       }
-      if (check_interrupt1 % 100 == 0) {
-	TRIGGER = false;
-	Rcpp::Rcout << check_interrupt1 << " long inner loop." << std::endl;
-      }
+      // if (check_interrupt1 % 100 == 0) {
+      // 	TRIGGER = false;
+      // 	Rcpp::Rcout << check_interrupt1 << " long inner loop." << std::endl;
+      // }
 
       t1 = 0; 
       if (!linearConstraints.empty()) {
@@ -113,20 +117,25 @@ MatrixXd HmcSampler::sampleNext(bool returnTrace ) {
 	tt = tt - t;
 	VectorXd new_b   = sin(t) * a + cos(t) * b;   // hit location 
 	VectorXd hit_vel = cos(t) * a - sin(t) * b;   // hit velocity
-	b = new_b;
+
 	if (TRIGGER) {
 	Rcpp::Rcout << "New b : "
 		    << (F_mat * new_b + g_vec).transpose() << std::endl;}
 
        	if (!_verifyConstraints(new_b)) {
-	  Rcpp::Rcout << "NEW B VIOLATES" << std::endl;
+	  TRIGGER = true;
+	  Rcpp::Rcout << "NEW B VIOLATES " << COUNTER << std::endl;
 	  Rcpp::Rcout << "t1: " << t1 << std::endl;
 	  Rcpp::Rcout << "old b: "
 		      << (F_mat * lastSample + g_vec).transpose() << std::endl;
 	  Rcpp::Rcout << "test b : "
 		      << (F_mat * (sin(t*0.1) * a + cos(t*0.1) * lastSample) + g_vec).transpose()
 		      << std::endl;
+	  bad_new_b = true;
+	  break;
 	}
+	b = new_b;
+	bad_new_b = false;
 
 	// reflect the velocity and verify that it points in the right direction
 	LinearConstraint ql = linearConstraints[cn1];
@@ -142,7 +151,11 @@ MatrixXd HmcSampler::sampleNext(bool returnTrace ) {
 	}
       }
     } //while(1)
-
+    if (bad_new_b) {
+      b = lastSample;
+      Rcpp::Rcout << "Bad new b. Resample" << std::endl;
+      continue;
+    }
 
     if (velsign < 0) {		
       Rcpp::Rcout << velsign << " outer velsign less than 0." << std::endl;
