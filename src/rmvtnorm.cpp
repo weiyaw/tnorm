@@ -13,14 +13,6 @@ Eigen::MatrixXd rmvtnorm(const int n,
   using Eigen::VectorXd;
   using Eigen::MatrixXd;
 
-  // numlin_ : number of linear constraints
-
-  // f2 = f %*% Ri
-  // g2 = as.vector(f %*% Mir + g)
-  // R = chol(M)
-  // Mir = solve(M, r)
-  // Ri = solve(R)
-
   // idea : generate standard normal and transform it back with desired mean and variance
 
   // number of dimensions
@@ -37,15 +29,13 @@ Eigen::MatrixXd rmvtnorm(const int n,
   MatrixXd g2 {(F * mean) + g};
 
   // initialise hmc sampler
-  HmcSampler hmc1(dim, f2, g2);
+  HmcSampler hmc1(L.inverse() * (initial - mean), dim, f2, g2);
 
-  if (numlin >0){
+  if (numlin > 0){
     for(int i = 0; i < numlin; i++) {
       hmc1.addLinearConstraint(f2.row(i),g2(i));
     }
   }
-
-  hmc1.setInitialValue(L.inverse() * (initial - mean));
 
   MatrixXd res(n, dim);
   res = res * 0;

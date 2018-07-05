@@ -27,33 +27,28 @@ struct QuadraticConstraint{
 };
 
 
-class HmcSampler   {
-public:
+class HmcSampler {
+ public:
     
-  HmcSampler(const int& d, const MatrixXd& F, const VectorXd& g);
-
-    void setInitialValue(const VectorXd & initial);
-    void addLinearConstraint(const VectorXd & f, const double & g);
-    void addQuadraticConstraint(const MatrixXd & A, const VectorXd & B, const double & C);
-    MatrixXd sampleNext(bool returnTrace = false);
+  HmcSampler(const VectorXd& init_val, const int& d, const MatrixXd& F, const VectorXd& g);
+  void addLinearConstraint(const VectorXd & f, const double & g);
+  MatrixXd sampleNext();
     
-private:
-    int COUNTER = 0;
-    bool TRIGGER;
-    MatrixXd F_mat;
-    VectorXd g_vec;
+ private:
+  int COUNTER = 0;
+  bool TRIGGER;
+  MatrixXd F_mat;
+  VectorXd g_vec;
     
-    int dim;
-    VectorXd lastSample;    
-    static const double min_t; 
-    std::vector<LinearConstraint> linearConstraints;
-    std::vector<QuadraticConstraint> quadraticConstraints;
+  int dim;
+  VectorXd last_sample;
+  static const double EPS;
+  std::vector<LinearConstraint> linearConstraints;
     
-    void _getNextLinearHitTime(const VectorXd & a, const VectorXd & b,  double & t, int & cn );
-    void _getNextQuadraticHitTime(const VectorXd & a, const VectorXd & b, double & t, int & cn, const bool );
-    /* double _verifyConstraints(const VectorXd & b); */
-    bool _verifyConstraints(const VectorXd & b);
-    void _updateTrace( VectorXd const & a,  VectorXd const & b, double const & tt, MatrixXd & tracePoints);
+  void _getNextLinearHitTime(const VectorXd& a, const VectorXd& b,  double& t, int& cn );
+  bool _verifyConstraints(const VectorXd& b);
+  
+  /*     void _updateTrace( VectorXd const & a,  VectorXd const & b, double const & tt, MatrixXd & tracePoints); */
 };
 
 #endif	/* HMCSAMPLER_H */
