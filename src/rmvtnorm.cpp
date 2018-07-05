@@ -1,5 +1,4 @@
 #include "my_HmcSampler2.h"
-
 #include <RcppEigen.h>
 
 // [[Rcpp::export]]
@@ -47,11 +46,7 @@ Eigen::MatrixXd rmvtnorm(const int n,
 
   // generate samples and transform them back with appropriate mean and covariance
   for (int i = 0; i < n; i++) {
-    // if (i % 10000 == 0) {
-    //   Rcpp::Rcout << i << " samples." << std::endl;
-    // }
-    MatrixXd temp = (L * hmc1.sampleNext() + mean);
-    res.row(i) = temp.transpose();
+    res.row(i) = (L * hmc1.sampleNext() + mean).transpose();
   }
 
   return(res);

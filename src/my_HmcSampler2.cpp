@@ -8,10 +8,8 @@
 #define _USE_MATH_DEFINES   // for the constant M_PI
 #include <cmath>
 #include <RcppEigen.h>
-
 #include "my_HmcSampler2.h"
 
-using namespace std;
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
@@ -41,34 +39,18 @@ MatrixXd HmcSampler::sampleNext() {
     VectorXd b = last_sample;
     int hit_wall = -1;		   // the constraint hit by the particle (-1 if not hit)
 
-    // if (check_interrupt2 > 1) {
-    //   Rcpp::Rcout << check_interrupt2 << " long outer loop." << std::endl;
-    //   TRIGGER = true;
-    // }	
-
-    if (check_interrupt2 == 5) {
+    if (check_interrupt2 > 5) {
       Rcpp::Rcout << COUNTER << std::endl;
-      Rcpp::stop("too many loops.");
+      Rcpp::stop("Too many loops.");
     }
-
-    double velsign = 0;
-
+    
     // Sample new initial velocity from normal distributions
     for (int i = 0; i < dim; i++) { 
       a(i) = R::norm_rand();
     }
 
     double t_left = T;		// t_left is the time left to move 
-
-    // TRIGGER = false;
-    // if (COUNTER == 44967) {TRIGGER = true;}
-    
-    // if (TRIGGER) {
-    //   Rcpp::Rcout << "init vel:" << a.transpose() << std::endl;
-    //   Rcpp::Rcout << "prev sam:" << b.transpose() << std::endl;
-    // }
-
-    int check_interrupt1 = 0;
+    int check_interrupt1 = 0;	// check for user interruptions
 
     while (1){
       // advance the particle for t_left = PI/2 
@@ -76,20 +58,12 @@ MatrixXd HmcSampler::sampleNext() {
       if (check_interrupt1++ % 50 == 0) {
 	Rcpp::checkUserInterrupt();
       }
-      // if (check_interrupt1 % 100 == 0) {
-      // 	TRIGGER = false;
-      // 	Rcpp::Rcout << check_interrupt1 << " long inner loop." << std::endl;
-      // }
 
       double hit_t = -1; 	// time to hit a wall from the latest b
 
       if (!linearConstraints.empty()) {
 	_getNextLinearHitTime(a, b, hit_t, hit_wall);
       }
-      // if (TRIGGER) {Rcpp::Rcout << "Hit time: " << t1 << std::endl;}
-
-      bool linear_hit = true;
-
 
       if (hit_t < 0 || t_left < hit_t) {
 	// if no wall to be hit (t = -1) or not enough time left to hit the wall (t_left < t) 
@@ -104,49 +78,31 @@ MatrixXd HmcSampler::sampleNext() {
 	b = sin(hit_t) * a + cos(hit_t) * b;		    // hit location 
 	VectorXd hit_vel = cos(hit_t) * a - sin(hit_t) * b; // hit velocity
 
-	// if (TRIGGER) {
-	// Rcpp::Rcout << "New b : "
-	// 	    << (F_mat * b + g_vec).transpose() << std::endl;}
-
-       	if (!_verifyConstraints(b)) {
-	  TRIGGER = true;
-	  Rcpp::Rcout << "NEW B VIOLATES " << COUNTER << std::endl;
-	  Rcpp::Rcout << "t1(hit_t): " << hit_t << std::endl;
-	  Rcpp::Rcout << "old b: "
-	  	      << (F_mat * last_sample + g_vec).transpose() << std::endl;
-	  RESAMPLE = true;
-	  break;
-	}
-
 	// reflect the velocity and verify that it points in the right direction
 	LinearConstraint ql = linearConstraints.at(hit_wall);
 	double f2 = ((ql.f).dot((ql.f)));
-	double alpha = ((ql.f).dot(hit_vel))/f2;
+	double alpha = ((ql.f).dot(hit_vel)) / f2;
 	a = hit_vel - 2 * alpha * (ql.f); // reflected velocity
-	velsign = a.dot((ql.f));
+	double velsign = a.dot((ql.f));
 
 	// This occurs rarely, due to numerical instabilities
 	if (velsign < 0) {
 	  RESAMPLE = true;
-	  break; // get out of while(1). Resample the velocity and start again.
+	  break;  // get out of while(1). Resample the velocity and start again.
 	}
       }
-    } //while(1)
+    } // while(1)
 
-    // Resample a velocity if velsign < 0 or b breaks constraints.
+    // Resample a velocity if velsign < 0 / b breaks constraints / getting stuck.
     if (RESAMPLE) {
       RESAMPLE = false;
       continue;
     }
       
     // make last move of time without hitting walls  
-    VectorXd final_b =  sin(t_left) * a + cos(t_left) * b;
+    VectorXd final_b = sin(t_left) * a + cos(t_left) * b;
 
     // verify that we don't violate the constraints due to a numerical instability
-    // if (TRIGGER) {
-    //   Rcpp::Rcout << " bbbb : " << (F_mat * bb + g_vec).transpose() << std::endl;
-    // }
-
     if (_verifyConstraints(final_b)) {
       last_sample = final_b;
       return last_sample;
