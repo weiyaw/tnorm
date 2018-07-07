@@ -2,12 +2,13 @@
 #include <RcppEigen.h>
 
 // [[Rcpp::export]]
-Eigen::MatrixXd rmvtnorm(const int n,
-			 const Eigen::VectorXd mean,
-			 const Eigen::MatrixXd cov,
-			 const Eigen::VectorXd initial, const Eigen::MatrixXd F,
-			 const Eigen::VectorXd g,
-			 const int burn = 10) {
+Eigen::MatrixXd rmvtnorm(const int& n,
+			 const Eigen::VectorXd& mean,
+			 const Eigen::MatrixXd& cov,
+			 const Eigen::VectorXd& initial,
+			 const Eigen::MatrixXd& F,
+			 const Eigen::VectorXd& g,
+			 const int& burn = 10) {
 
   using Eigen::VectorXd;
   using Eigen::MatrixXd;
@@ -16,12 +17,44 @@ Eigen::MatrixXd rmvtnorm(const int n,
 
   // number of dimensions
   const int dim = mean.size();
+  
+  if (cov.rows() != cov.cols()) {
+    Rcpp::stop("Covariance must be a square matrix.");
+  }
 
+  if (cov.rows() != dim) {
+    Rcpp::stop("Dimensions of mean and covariance not matching.");
+  }
+
+  if (initial.size() != dim) {
+    Rcpp::stop("Dimensions of mean and initial value not matching.");
+  }
+  
+  if (F.cols() != dim) {
+    Rcpp::stop("Dimension of mean and the columns of F not matching.");
+  }
+  
+  if (F.rows() != g.size()) {
+    Rcpp::stop("Inconsistent dimensions of F and g.");
+  }
+  
   // number of linear constraints
   const int numlin = F.rows();
 
+  if (initial.size() != dim) {
+    Rcpp::stop("Dimensions of mean and initial value not matching.");
+  }
+
+  // covariance is "symmetricalised"
+  MatrixXd cov_sym {(cov.transpose() + cov) / 2};
+  Eigen::LLT<MatrixXd> cov_llt {cov_sym.llt()};
+
+  if (cov_llt.info() == Eigen::NumericalIssue) {
+    Rcpp::stop("Non positive definitie covariance.");
+  }
+  
   // Cholesky of covariance
-  MatrixXd L {cov.llt().matrixL()};
+  MatrixXd L {cov_llt.matrixL()};
 
   // get constraints corresponding to standard normal
   MatrixXd f2 {F * L};

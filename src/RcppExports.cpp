@@ -7,18 +7,18 @@
 using namespace Rcpp;
 
 // rmvtnorm
-Eigen::MatrixXd rmvtnorm(const int n, const Eigen::VectorXd mean, const Eigen::MatrixXd cov, const Eigen::VectorXd initial, const Eigen::MatrixXd F, const Eigen::VectorXd g, const int burn);
+Eigen::MatrixXd rmvtnorm(const int& n, const Eigen::VectorXd& mean, const Eigen::MatrixXd& cov, const Eigen::VectorXd& initial, const Eigen::MatrixXd& F, const Eigen::VectorXd& g, const int& burn);
 RcppExport SEXP _tnorm_rmvtnorm(SEXP nSEXP, SEXP meanSEXP, SEXP covSEXP, SEXP initialSEXP, SEXP FSEXP, SEXP gSEXP, SEXP burnSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< const Eigen::VectorXd >::type mean(meanSEXP);
-    Rcpp::traits::input_parameter< const Eigen::MatrixXd >::type cov(covSEXP);
-    Rcpp::traits::input_parameter< const Eigen::VectorXd >::type initial(initialSEXP);
-    Rcpp::traits::input_parameter< const Eigen::MatrixXd >::type F(FSEXP);
-    Rcpp::traits::input_parameter< const Eigen::VectorXd >::type g(gSEXP);
-    Rcpp::traits::input_parameter< const int >::type burn(burnSEXP);
+    Rcpp::traits::input_parameter< const int& >::type n(nSEXP);
+    Rcpp::traits::input_parameter< const Eigen::VectorXd& >::type mean(meanSEXP);
+    Rcpp::traits::input_parameter< const Eigen::MatrixXd& >::type cov(covSEXP);
+    Rcpp::traits::input_parameter< const Eigen::VectorXd& >::type initial(initialSEXP);
+    Rcpp::traits::input_parameter< const Eigen::MatrixXd& >::type F(FSEXP);
+    Rcpp::traits::input_parameter< const Eigen::VectorXd& >::type g(gSEXP);
+    Rcpp::traits::input_parameter< const int& >::type burn(burnSEXP);
     rcpp_result_gen = Rcpp::wrap(rmvtnorm(n, mean, cov, initial, F, g, burn));
     return rcpp_result_gen;
 END_RCPP

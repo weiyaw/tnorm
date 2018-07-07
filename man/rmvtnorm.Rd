@@ -28,4 +28,17 @@ Generate truncated normal samples using Hamiltonian Monte Carlo technique.
 This is a modified version of \code{tmg} package in CRAN. The samples will satisfy
 the following inequality \deqn{F \times x + g > 0} where \eqn{x} is a column vector
 of the generated sample.
+
+No check for symmetry is performed on covariance. The initial value must
+strictly satisfy the inequality constraints, although the generated samples
+only satisfy them weakly.
+}
+\examples{
+plot(rmvtnorm(100))
+
+plot(rmvtnorm(100, F = diag(2), g = c(1, -1), initial = c(0, 2)))
+
+plot(rmvtnorm(100, mean = c(1, 1), cov = matrix(c(1, 0.5, 0.5, 1), 2), F =
+diag(2), g = c(1, -1), initial = c(0, 2)))
+
 }

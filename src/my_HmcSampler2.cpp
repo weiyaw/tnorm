@@ -39,8 +39,7 @@ MatrixXd HmcSampler::sampleNext() {
     VectorXd b = last_sample;
     int hit_wall = -1;		   // the constraint hit by the particle (-1 if not hit)
 
-    if (check_interrupt2 > 5) {
-      Rcpp::Rcout << COUNTER << std::endl;
+    if (check_interrupt2 > 50) {
       Rcpp::stop("Too many loops.");
     }
     
@@ -116,7 +115,7 @@ MatrixXd HmcSampler::sampleNext() {
 
 
 
-void HmcSampler::addLinearConstraint(const VectorXd & f, const double & g){
+void HmcSampler::addLinearConstraint(const VectorXd& f, const double& g){
   LinearConstraint newConstraint;
   newConstraint.f = f;
   newConstraint.g = g;
@@ -133,9 +132,9 @@ void HmcSampler::_getNextLinearHitTime(const VectorXd& a, const VectorXd& b,
     double fa = (lc.f).dot(a);
     double fb = (lc.f).dot(b);
     double u = sqrt(fa*fa + fb*fb);
+
     if (u > lc.g && u > -lc.g) {
       double phi = atan2(-fa, fb); // -PI < phi < PI
-
       // solve eqn 2.23 for t, first case
       // -PI < t1 + phi < PI
       double t1 = acos(-lc.g/u) - phi; // -PI < t1 < 2PI
@@ -164,7 +163,17 @@ void HmcSampler::_getNextLinearHitTime(const VectorXd& a, const VectorXd& b,
       double t = -1;
 
       if (prev_cn == i) {
+	// if b is at the boundary but due to previous hit
 	t = (t1 > t2? t1 : t2);
+      } else if (t1 == 0 || t2 == 0) {
+      	// if b is at the boundary, check the sign of K at midpoint
+      	double midpoint = fabs(t2 - t1) / 2.0;
+      	if (u * cos(midpoint + phi) > -lc.g) {
+      	  // increase t will not violate constraints
+      	  t = (t1 > t2? t1 : t2);
+      	} else {
+      	  t = 0;
+      	}
       } else {
 	t = (t1 < t2? t1 : t2);
       }
@@ -175,9 +184,7 @@ void HmcSampler::_getNextLinearHitTime(const VectorXd& a, const VectorXd& b,
       if (hit_time < 0 || t < hit_time) {
 	hit_time = t;
 	cn = i;
-	// if (TRIGGER) {
-	//   Rcpp::Rcout << "CHANGE CONSTRAINT TO " << i << std::endl;
-	// }
+	// if (TRIGGER) {Rcpp::Rcout << "CHANGE CONSTRAINT TO " << i << std::endl;}
       }
     }
     // Rcpp::stop("Invalid hit time."); 
