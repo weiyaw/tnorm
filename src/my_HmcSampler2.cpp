@@ -73,10 +73,11 @@ MatrixXd HmcSampler::sampleNext() {
 	RESAMPLE = true;	// resample a new velocity
 	break;
       } else {            
-	t_left = t_left - hit_t;
-	b = sin(hit_t) * a + cos(hit_t) * b;		    // hit location 
-	VectorXd hit_vel = cos(hit_t) * a - sin(hit_t) * b; // hit velocity
 
+	t_left = t_left - hit_t;
+	VectorXd hit_vel = cos(hit_t) * a - sin(hit_t) * b; // hit velocity
+	b = sin(hit_t) * a + cos(hit_t) * b;		    // hit location 
+	
 	// reflect the velocity and verify that it points in the right direction
 	LinearConstraint ql = linearConstraints.at(hit_wall);
 	double f2 = ((ql.f).dot((ql.f)));
@@ -107,7 +108,7 @@ MatrixXd HmcSampler::sampleNext() {
       return last_sample;
     }
 
-    Rcpp::Rcout << "BAD FINAL B" << std::endl;
+    // Rcpp::Rcout << "BAD FINAL B" << std::endl;
     // at this point we have violated constraints: resample velocity.
 
   } // while(2)
