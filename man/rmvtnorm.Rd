@@ -4,8 +4,8 @@
 \alias{rmvtnorm}
 \title{Generate truncated normal samples.}
 \usage{
-rmvtnorm(n, mean = c(0, 0), cov = diag(2), initial = c(0, 0), F = NULL,
-  g = NULL, burn = 10L)
+rmvtnorm(n, mean = c(0, 0), cov = diag(2), initial = c(0, 0),
+  F = NULL, g = NULL, burn = 10L)
 }
 \arguments{
 \item{n}{number of samples.}
@@ -19,14 +19,14 @@ rmvtnorm(n, mean = c(0, 0), cov = diag(2), initial = c(0, 0), F = NULL,
 \item{F, g}{constraint matrix and vector.}
 }
 \value{
-a matrix with each row corresponding to a sample.
+A matrix with each row corresponding to a sample.
 }
 \description{
 Generate truncated normal samples using Hamiltonian Monte Carlo technique.
 }
 \details{
 This is a modified version of \code{tmg} package in CRAN. The samples will satisfy
-the following inequality \deqn{F \times x + g > 0} where \eqn{x} is a column vector
+the following inequality \deqn{F \times x + g >= 0} where \eqn{x} is a column vector
 of the generated sample.
 
 No check for symmetry is performed on covariance. The initial value must

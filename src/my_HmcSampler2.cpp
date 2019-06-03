@@ -39,7 +39,7 @@ MatrixXd HmcSampler::sampleNext() {
     VectorXd b = last_sample;
     int hit_wall = -1;		   // the constraint hit by the particle (-1 if not hit)
 
-    if (check_interrupt2 > 50) {
+    if (check_interrupt2 > 500) {
       Rcpp::stop("Too many loops.");
     }
     
