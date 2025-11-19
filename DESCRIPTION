@@ -1,14 +1,15 @@
 Package: tnorm
 Title: Generate Multivariate Truncated Normal Samples
-Version: 0.0.0.9000
-Authors@R: person("Kenyon", "Ng", email = "kenyon.ng@research.uwa.edu.au", role = c("aut", "cre"))
-Description: This package generates multivariate normal samples subject to linear inequalities constraints using exact Hamiltonian Monte Carlo as described in blah.
+Version: 0.0.1
+Authors@R: person("Kenyon", "Ng", email = "kenyon.ng@gmail.com", role = c("aut", "cre"))
+Description: This package generates multivariate normal samples subject to linear inequalities constraints using exact Hamiltonian Monte Carlo.
 Depends: R (>= 3.5.0)
-License: What license is it under?
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 LinkingTo: Rcpp,
     RcppEigen
-Imports: Rcpp,
-    RcppEigen
-RoxygenNote: 6.1.1
+Imports: Rcpp
+Suggests: testthat (>= 3.0.0)
+Config/testthat/edition: 3
+RoxygenNote: 7.3.2

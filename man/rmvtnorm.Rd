@@ -4,8 +4,15 @@
 \alias{rmvtnorm}
 \title{Generate truncated normal samples.}
 \usage{
-rmvtnorm(n, mean = c(0, 0), cov = diag(2), initial = c(0, 0),
-  F = NULL, g = NULL, burn = 10L)
+rmvtnorm(
+  n,
+  mean = c(0, 0),
+  cov = diag(length(mean)),
+  initial = rep(0, length(mean)),
+  F = NULL,
+  g = NULL,
+  burn = 10L
+)
 }
 \arguments{
 \item{n}{number of samples.}
@@ -16,7 +23,11 @@ rmvtnorm(n, mean = c(0, 0), cov = diag(2), initial = c(0, 0),
 
 \item{initial}{an initial value for the Markov chain.}
 
-\item{F, g}{constraint matrix and vector.}
+\item{F}{constraint matrix defining linear inequalities.}
+
+\item{g}{constraint vector defining linear inequalities.}
+
+\item{burn}{number of burn-in iterations before collecting samples.}
 }
 \value{
 A matrix with each row corresponding to a sample.

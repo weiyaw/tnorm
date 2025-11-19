@@ -6,6 +6,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // rmvtnorm
 Eigen::MatrixXd rmvtnorm(const int& n, const Eigen::VectorXd& mean, const Eigen::MatrixXd& cov, const Eigen::VectorXd& initial, const Eigen::MatrixXd& F, const Eigen::VectorXd& g, const int& burn);
 RcppExport SEXP _tnorm_rmvtnorm(SEXP nSEXP, SEXP meanSEXP, SEXP covSEXP, SEXP initialSEXP, SEXP FSEXP, SEXP gSEXP, SEXP burnSEXP) {

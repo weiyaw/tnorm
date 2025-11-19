@@ -1,21 +1,45 @@
-# Truncated Gaussian sampler using exact Hamiltonian Monte Carlo
+# Multivariate Truncated Normal Sampler
 
-This is an R package that implements Hamiltonian Monte Carlo
-([Pakman and Paninski, 2014](https://arxiv.org/abs/1208.4118)) to sample from a
-Gaussian distribution truncated with linear constraints. The sampler was written
-in `C++` for fast computation and connected to `R` using `Rcpp`.
+`tnorm` provides exact Hamiltonian Monte Carlo (HMC) sampling for multivariate Gaussian
+distributions subject to linear inequality constraints. The core sampler is written in C++
+following Pakman & Paninski (2014) and exposed to R via Rcpp for convenient statistical workflows.
+It started as a ground-up rewrite of the unmaintained [`tmg`](https://cran.r-project.org/package=tmg)
+package.
 
-This package reuses part of the code from the `tmg` package
-([link](https://cran.r-project.org/web/packages/tmg/index.html) to CRAN) and
-fixes an edge case in `tmg`.
+## Installation
 
-You can painlessly install this package using `devtools`, which can be
-downloaded and installed with the following one-liner:
-```
-install.packages("devtools")
+```r
+install.packages("remotes")
+remotes::install_github("weiyaw/tnorm")
 ```
 
-Then, the installation of this package is just
+## Example
+
+Draw 2,000 samples from a bivariate standard normal distribution truncated to the positive quadrant.
+The rows of the returned matrix are independent draws after a burn-in period.
+
+```r
+library(tnorm)
+
+# Inequalities Fx + g >= 0 enforce x1 >= 0, x2 >= 0
+F <- diag(2)
+g <- c(0, 0)
+
+samples <- rmvtnorm(
+  n = 2000,
+  mean = c(0, 0),
+  cov = diag(2),
+  initial = c(0.2, 0.2),
+  F = F,
+  g = g,
+  burn = 500
+)
+
+head(samples)
+colMeans(samples)  # ≈ sqrt(2 / pi)
+diag(var(samples)) # ≈ 1 - 2 / pi
 ```
-devtools::install_github("weiyaw/blackbox")
-```
+
+Because the sampler operates in a transformed standard-normal space, the linear constraints are
+enforced exactly and the moments of the samples match known analytical results (see
+`tests/testthat/test-rmvtnorm.R` for references).

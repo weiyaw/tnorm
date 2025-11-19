@@ -14,7 +14,9 @@
 #' @param mean mean vector.
 #' @param cov variance covariance matrix.
 #' @param initial an initial value for the Markov chain.
-#' @param F,g constraint matrix and vector.
+#' @param F constraint matrix defining linear inequalities.
+#' @param g constraint vector defining linear inequalities.
+#' @param burn number of burn-in iterations before collecting samples.
 #'
 #' @return A matrix with each row corresponding to a sample.
 #'
@@ -51,5 +53,4 @@ rmvtnorm <- function(n, mean = c(0, 0), cov = diag(length(mean)),
     }
     .Call('_tnorm_rmvtnorm', PACKAGE = 'tnorm', n, mean, cov, initial, F, g, burn)
 }
-
 
